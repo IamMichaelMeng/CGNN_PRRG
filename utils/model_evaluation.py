@@ -111,40 +111,6 @@ def model_evaluate(sbgnn_model, srgnn_model, dataset_name, group_size, num_users
     group_test_check_ins = group_check_ins[random_rows]
     similar_user_id_dict = load_similar_user_id(dataset_name, group_size)
     model_performance = [[[], [], []], [[], [], []], [[], [], []], [[], [], []], [[], [], []]]
-    for group_id in tqdm(range(0, group_test_check_ins.shape[0])):
-        similar_user_id_list = similar_user_id_dict[group_id][0]
-        # 获取相似用户的poi交互数据
-        group_true_poi = []
-        poi_interaction_data, matrix, test_y = load_similar_user_poi_interaction_data(dataset_name, similar_user_id_list, num_users, num_pois)
-        poi_transition_data, target_data = load_similar_user_poi_transition_data(dataset_name, group_size, similar_user_id_list)
-        pred_y, _, _ = sbgnn_model(poi_interaction_data, matrix)  # 前向转播进行预测
-        group_true_poi.extend(target_data)
-
-        sbgnn_pred_poi, sbgnn_true_poi = [], []
-        for i, j, z in zip(poi_interaction_data, pred_y, test_y):
-            if z == 1:
-                sbgnn_true_poi.append(int(i[1]))
-            if i[2] != -1 and j > 0.96:
-                sbgnn_pred_poi.append(int(i[1]))
-
-        sbgnn_pred_poi = sorted(list(set(sbgnn_pred_poi)))[:20]  # 只取前20个
-        sbgnn_true_poi = sorted(list(set(sbgnn_true_poi)))[:20]  # 只取前20个
-        group_true_poi.extend(sbgnn_true_poi)
-        group_true_poi = sorted(list(set(group_true_poi)))
-        # 获取相似用户的poi转移预测结果
-        _, _, _, srgnn_pred_poi = srgnn_test(srgnn_model, poi_transition_data)  # 给出预测结果
-        srgnn_pred_poi = srgnn_pred_poi.cpu().numpy()[:, 0]  # 提取预测结果
-        group_pred_poi = []
-        group_pred_poi.extend(sbgnn_pred_poi)
-        group_pred_poi.extend(srgnn_pred_poi)
-        group_pred_poi = sorted(list(set(group_pred_poi)))
-        top = [2, 5, 10, 15, 20]
-        for i, k in enumerate(top):
-            precision, recall, ndcg = precision_recall_ndcg(group_pred_poi, group_true_poi, k)
-            model_performance[i][0].append(precision)
-            model_performance[i][1].append(recall)
-            model_performance[i][2].append(ndcg)
-    mean_performance = [[], [], [], [], []]
     for i in range(0, len(model_performance)):
         for j in range(0, len(model_performance[i])):
             mean_performance[i].append(np.mean(model_performance[i][j]))
